@@ -4,9 +4,10 @@ import { initialData } from '../../src/data/defaults'
 import type { AppData, Workout } from '../../src/lib/types'
 import { createApp } from '../src/app'
 import { signInitData } from '../src/auth'
-import { loadConfig } from '../src/config'
+import { loadConfig, webhookToken } from '../src/config'
 import { createDb, migrate } from '../src/db'
 import { leaderboardTonnage } from '../src/stats'
+import { configureTelegramBot } from '../src/telegramSetup'
 
 const BOT = '123456:TEST-bot-token'
 const db = createDb(process.env.TEST_DATABASE_URL ?? 'postgres://localhost:5432/bodytrain_test')
@@ -169,11 +170,29 @@ test('удаление аккаунта удаляет дневник и рей�
   assert.equal(day.body.entries.length, 1)
 })
 
+test('при старте сервер ставит webhook с допустимым для Telegram секретом', async () => {
+  const calls: { url: string; body: Record<string, unknown> }[] = []
+  const fake = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, body: JSON.parse(String(init?.body)) })
+    return new Response('{"ok":true}')
+  }) as typeof fetch
+  await configureTelegramBot({ ...config, publicUrl: 'https://bt.example', telegramWebhookSecret: 'abc+/=base64' }, fake)
+  const hook = calls.find((c) => c.url.endsWith('/setWebhook'))!
+  assert.equal(hook.body.url, 'https://bt.example/api/telegram/webhook')
+  assert.match(String(hook.body.secret_token), /^[A-Za-z0-9_-]{1,256}$/)
+  assert.ok(calls.some((c) => c.url.endsWith('/setChatMenuButton')))
+  calls.length = 0
+  await configureTelegramBot({ ...config, publicUrl: 'http://localhost:5173' }, fake)
+  assert.equal(calls.length, 0, 'без https бот не настраивается')
+})
+
 test('webhook бота отвечает на /start кнопкой Mini App и проверяет секрет', async () => {
   const update = { message: { chat: { id: 42, type: 'private' }, text: '/start' } }
   const wrong = await app.request('/api/telegram/webhook', { method: 'POST', body: JSON.stringify(update), headers: { 'X-Telegram-Bot-Api-Secret-Token': 'x' } })
   assert.equal(wrong.status, 401)
-  const ok = await app.request('/api/telegram/webhook', { method: 'POST', body: JSON.stringify(update), headers: { 'X-Telegram-Bot-Api-Secret-Token': 'hook-secret' } })
+  const raw = await app.request('/api/telegram/webhook', { method: 'POST', body: JSON.stringify(update), headers: { 'X-Telegram-Bot-Api-Secret-Token': 'hook-secret' } })
+  assert.equal(raw.status, 401, 'принимается только производный токен')
+  const ok = await app.request('/api/telegram/webhook', { method: 'POST', body: JSON.stringify(update), headers: { 'X-Telegram-Bot-Api-Secret-Token': webhookToken('hook-secret') } })
   assert.equal(ok.status, 200)
   const msg = sent.at(-1) as { chat_id: number; reply_markup: { inline_keyboard: { web_app: { url: string } }[][] } }
   assert.equal(msg.chat_id, 42)

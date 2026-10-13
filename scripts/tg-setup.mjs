@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 // Настройка бота через Bot API: webhook, кнопка меню с Mini App, команды и описание.
 //   npm run tg:setup      (берёт TELEGRAM_BOT_TOKEN, PUBLIC_URL, TELEGRAM_WEBHOOK_SECRET из .env)
 const token = process.env.TELEGRAM_BOT_TOKEN
@@ -24,7 +26,7 @@ await call('setMyCommands', { commands: [{ command: 'start', description: 'От�
 await call('setMyDescription', { description: 'Дневник тренировок и КБЖУ. Записывай подходы, считай калории по фото и штрихкоду, соревнуйся по тоннажу за день и неделю.' })
 await call('setMyShortDescription', { short_description: 'Тренировки, КБЖУ и рейтинг по тоннажу' })
 if (secret) {
-  await call('setWebhook', { url: `${url}/api/telegram/webhook`, secret_token: secret, allowed_updates: ['message'] })
+  await call('setWebhook', { url: `${url}/api/telegram/webhook`, secret_token: createHash('sha256').update(secret).digest('hex'), allowed_updates: ['message'] })
 } else {
   console.log('TELEGRAM_WEBHOOK_SECRET не задан — webhook для ответа на /start не настроен (кнопка меню работает и без него)')
 }

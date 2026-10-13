@@ -8,7 +8,7 @@ import { getConnInfo } from '@hono/node-server/conninfo'
 import { parseAppData } from '../../src/lib/validation'
 import type { AppData } from '../../src/lib/types'
 import { hashPassword, signToken, validateInitData, verifyPassword, verifyToken, type TelegramUser } from './auth'
-import type { Config } from './config'
+import { webhookToken, type Config } from './config'
 import type { Db } from './db'
 import { RateLimiter } from './rateLimit'
 import { workoutStats } from './stats'
@@ -359,7 +359,7 @@ export function createApp({ db, config, fetchImpl = fetch }: { db: Db; config: C
   // ── Telegram-бот: ответ на /start кнопкой Mini App ─────────────────
 
   app.post('/api/telegram/webhook', async (c) => {
-    if (!config.telegramWebhookSecret || c.req.header('x-telegram-bot-api-secret-token') !== config.telegramWebhookSecret) {
+    if (!config.telegramWebhookSecret || c.req.header('x-telegram-bot-api-secret-token') !== webhookToken(config.telegramWebhookSecret)) {
       throw new ApiError(401, 'unauthorized')
     }
     const update = (await json(c)) as { message?: { chat?: { id?: number; type?: string }; text?: string } }

@@ -1,3 +1,11 @@
+import { createHash } from 'node:crypto'
+
+/**
+ * Telegram принимает в secret_token только A-Z a-z 0-9 _ -, а Render генерирует base64.
+ * Поэтому в webhook используется sha256(TELEGRAM_WEBHOOK_SECRET) в hex — и при установке, и при проверке.
+ */
+export const webhookToken = (secret: string) => createHash('sha256').update(secret).digest('hex')
+
 /** Настройки сервера из переменных окружения (см. .env.example). */
 export interface Config {
   port: number

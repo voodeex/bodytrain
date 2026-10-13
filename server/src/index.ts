@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server'
 import { createApp } from './app'
 import { loadConfig } from './config'
 import { createDb, migrate } from './db'
+import { configureTelegramBot } from './telegramSetup'
 
 const config = loadConfig()
 const db = createDb(config.databaseUrl)
@@ -21,6 +22,7 @@ const app = createApp({ db, config })
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(`BodyTrain API: http://localhost:${info.port}${config.staticDir ? ` (web: ${config.staticDir})` : ''}`)
   if (!config.telegramBotToken) console.log('TELEGRAM_BOT_TOKEN не задан — вход через Telegram выключен')
+  void configureTelegramBot(config)
 })
 
 const shutdown = () => {

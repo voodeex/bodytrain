@@ -1,0 +1,37 @@
+# Самостоятельный хостинг: docker compose up -d --build
+# Перед запуском создай .env (см. .env.example). Нужен HTTPS-прокси перед портом 8787 (nginx/Caddy) —
+# Telegram открывает Mini App только по https.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bodytrain
+      POSTGRES_USER: bodytrain
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задай POSTGRES_PASSWORD в .env}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bodytrain"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://bodytrain:${POSTGRES_PASSWORD}@db:5432/bodytrain
+      JWT_SECRET: ${JWT_SECRET:?задай JWT_SECRET в .env}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      LEADERBOARD_TZ: ${LEADERBOARD_TZ:-Europe/Moscow}
+      TRUST_PROXY: "1"
+    ports:
+      - "127.0.0.1:8787:8787"
+
+volumes:
+  db:

@@ -1,0 +1,132 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #0b0b0c;
+  --color-surface: #161618;
+  --color-surface-2: #212124;
+  --color-line: #2c2c30;
+  --color-text: #f4f4f5;
+  --color-muted: #8e8e93;
+  --color-faint: #5c5c62;
+  --color-accent: #d4ff3a;
+  --color-accent-ink: #0b0b0c;
+  --color-protein: #5ac8fa;
+  --color-fat: #ffb340;
+  --color-carbs: #bf8cff;
+  --color-danger: #ff453a;
+  --color-success: #30d158;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', Roboto, sans-serif;
+}
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --tabbar-h: 58px;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+  font: inherit;
+  color: inherit;
+}
+
+/* iOS увеличивает страницу при фокусе на инпут с font-size < 16px */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.pressable {
+  transition: transform 120ms ease, opacity 120ms ease, background-color 160ms ease;
+}
+.pressable:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-sheet {
+  animation: sheet-in 280ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.animate-fade {
+  animation: fade-in 200ms ease;
+}
+.animate-pop {
+  animation: pop 260ms ease;
+}
+
+button:disabled { opacity: 0.4; pointer-events: none; }
+button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media (min-width: 600px) {
+  #root { max-width: 520px; margin: 0 auto; border-inline: 1px solid var(--color-line); }
+  .app-layer { max-width: 520px; margin-inline: auto; }
+}

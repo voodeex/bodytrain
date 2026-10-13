@@ -1,0 +1,9 @@
+node_modules
+dist
+server/dist
+ios
+build
+.git
+.env
+.claude
+*.ipa

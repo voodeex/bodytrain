@@ -1,0 +1,28 @@
+# Render Blueprint: Dashboard → New → Blueprint → этот репозиторий.
+# База — бесплатный Neon Postgres (DATABASE_URL вставляется при создании).
+services:
+  - type: web
+    name: bodytrain
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: TRUST_PROXY
+        value: "1"
+      - key: LEADERBOARD_TZ
+        value: Europe/Moscow

@@ -30,7 +30,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: Number(env.PORT ?? 8787),
     databaseUrl,
     jwtSecret,
-    telegramBotToken: env.TELEGRAM_BOT_TOKEN || undefined,
+    // Заглушка вроде «-» (если токена пока нет) не включает вход через Telegram.
+    telegramBotToken: /^\d+:[\w-]{20,}$/.test(env.TELEGRAM_BOT_TOKEN ?? '') ? env.TELEGRAM_BOT_TOKEN : undefined,
     telegramWebhookSecret: env.TELEGRAM_WEBHOOK_SECRET || undefined,
     // Render сам задаёт RENDER_EXTERNAL_URL, Railway — RAILWAY_PUBLIC_DOMAIN
     publicUrl: (env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : ''))?.replace(/\/$/, '') || undefined,

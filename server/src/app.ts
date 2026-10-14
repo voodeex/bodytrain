@@ -137,7 +137,13 @@ export function createApp({ db, config, fetchImpl = fetch }: { db: Db; config: C
 
   app.get('/api/health', async (c) => {
     await db.query('select 1')
-    return c.json({ ok: true, telegram: !!config.telegramBotToken })
+    return c.json({
+      ok: true,
+      telegram: !!config.telegramBotToken,
+      webhook: !!config.telegramWebhookSecret,
+      // Render/Railway передают хеш коммита — видно, какая версия задеплоена.
+      version: (process.env.RENDER_GIT_COMMIT ?? process.env.RAILWAY_GIT_COMMIT_SHA ?? 'dev').slice(0, 7),
+    })
   })
 
   // ── Регистрация и вход ─────────────────────────────────────────────

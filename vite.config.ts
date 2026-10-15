@@ -11,20 +11,15 @@ export default defineConfig({
     proxy: {
       // Сервер BodyTrain (npm run server:dev)
       '/api': { target: 'http://localhost:8787', changeOrigin: true },
-      '/proxy/off-search': {
-        target: 'https://search.openfoodfacts.org',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/proxy\/off-search/, ''),
-      },
-      '/proxy/off': {
-        target: 'https://world.openfoodfacts.org',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/proxy\/off/, ''),
-      },
       '/proxy/groq': {
         target: 'https://api.groq.com',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/proxy\/groq/, ''),
+      },
+      '/proxy/openrouter': {
+        target: 'https://openrouter.ai',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/proxy\/openrouter/, ''),
       },
       '/proxy/cloudflare': {
         target: 'https://api.cloudflare.com',

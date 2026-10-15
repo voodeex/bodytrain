@@ -33,7 +33,7 @@ export function validateFood(v: unknown): FoodItem {
   if (macroEnergy > 50 && m.kcal < macroEnergy * 0.4) fail('калории не соответствуют БЖУ')
   return {
     ...m, name: str(p.name, 'название продукта'),
-    source: choice(p.source, ['local', 'off', 'vision', 'groq', 'cloudflare', 'gemini', 'claude', 'manual'], 'источник продукта'),
+    source: choice(p.source, ['local', 'off', 'vision', 'groq', 'openrouter', 'cloudflare', 'gemini', 'claude', 'manual'], 'источник продукта'),
     ...(p.brand !== undefined ? { brand: str(p.brand, 'бренд') } : {}),
     ...(p.barcode !== undefined ? { barcode: str(p.barcode, 'штрихкод', 100) } : {}),
     ...(p.portion !== undefined ? { portion: number(p.portion, 'порция', 0.1, 10000) } : {}),
@@ -68,7 +68,7 @@ export function validateSettings(v: unknown): Settings {
   const p = obj(v, 'настройки')
   return {
     restSeconds: number(p.restSeconds, 'таймер отдыха', 15, 3600),
-    aiProvider: choice(p.aiProvider ?? initialData.settings.aiProvider, ['groq', 'cloudflare'], 'сервис распознавания'),
+    aiProvider: choice(p.aiProvider ?? initialData.settings.aiProvider, ['groq', 'openrouter', 'cloudflare'], 'сервис распознавания'),
   }
 }
 export function parseAppData(value: unknown): AppData {

@@ -198,3 +198,47 @@ test('webhook бота отвечает на /start кнопкой Mini App и �
   assert.equal(msg.chat_id, 42)
   assert.equal(msg.reply_markup.inline_keyboard[0][0].web_app.url, 'https://bt.example')
 })
+
+test('Open Food Facts проксируется сервером: адрес собирается здесь, параметры проверяются', async () => {
+  const calls: { url: string; ua?: string }[] = []
+  let upstream = () => new Response(JSON.stringify({ hits: [{ code: '1' }] }), { status: 200 })
+  const proxyApp = createApp({
+    db, config,
+    fetchImpl: (async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), ua: (init?.headers as Record<string, string> | undefined)?.['User-Agent'] })
+      return upstream()
+    }) as unknown as typeof fetch,
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const get = async (path: string) => { const r = await proxyApp.request(path); return { status: r.status, body: (await r.json()) as any } }
+
+  const ok = await get('/api/off/search?q=%D0%B1%D1%83%D1%80%D0%B3%D0%B5%D1%80&page_size=5')
+  assert.equal(ok.status, 200)
+  assert.deepEqual(ok.body, { hits: [{ code: '1' }] })
+  const url = new URL(calls[0].url)
+  assert.equal(url.origin + url.pathname, 'https://search.openfoodfacts.org/search')
+  assert.equal(url.searchParams.get('q'), 'бургер')
+  assert.equal(url.searchParams.get('page_size'), '5')
+  // OFF просит User-Agent, а браузеру задавать его запрещено — ставит сервер.
+  assert.match(calls[0].ua ?? '', /BodyTrain/)
+
+  // Наружу уходит только то, что собрал сервер: мусор в параметрах до OFF не доходит.
+  assert.equal((await get('/api/off/search?q=a')).status, 422)
+  assert.equal((await get('/api/off/search?q=%D1%87%D0%B0%D0%B9&page_size=500')).status, 422)
+  assert.equal((await get('/api/off/product/..%2F..%2Fadmin')).status, 422)
+  assert.equal((await get('/api/off/product/12')).status, 422)
+  assert.equal(calls.length, 1)
+
+  upstream = () => new Response(JSON.stringify({ product: { code: '4600000000000' } }), { status: 200 })
+  assert.equal((await get('/api/off/product/4600000000000')).status, 200)
+  assert.equal(new URL(calls[1].url).pathname, '/api/v2/product/4600000000000.json')
+
+  upstream = () => new Response('', { status: 429 })
+  assert.equal((await get('/api/off/search?q=%D1%87%D0%B0%D0%B9')).status, 429)
+  upstream = () => new Response('', { status: 500 })
+  assert.equal((await get('/api/off/search?q=%D1%81%D0%BE%D0%BA')).status, 503)
+  upstream = () => new Response('<html>не json</html>', { status: 200 })
+  const broken = await get('/api/off/search?q=%D1%85%D0%BB%D0%B5%D0%B1')
+  assert.equal(broken.status, 503)
+  assert.match(broken.body.error, /неожиданный ответ/)
+})

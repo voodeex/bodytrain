@@ -76,7 +76,7 @@ export default function App() {
         {tab === 'profile' && <ProfileScreen />}
       </main>
 
-      <nav className="shrink-0 border-t border-line bg-bg/95 backdrop-blur-xl pb-[var(--sab)]">
+      <nav className="relative z-30 shrink-0 border-t border-line bg-bg/95 backdrop-blur-xl pb-[var(--sab)]">
         <div className="h-[var(--tabbar-h)] grid grid-cols-5">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button

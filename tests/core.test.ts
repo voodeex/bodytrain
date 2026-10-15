@@ -16,7 +16,7 @@ const { parseAppData, parseBackup, validateFood, validDate } = await import('../
 const { macrosFor, sumMacros, shiftDay, e1rm, workoutVolume, dayKey } = await import('../src/lib/utils')
 const { calcTargets, targetsFor, targetsWithOffset } = await import('../src/lib/nutrition')
 const { periodStart, compareWeight, weightTrend, nutritionAdvice, daysBetween } = await import('../src/lib/weightTrend')
-const { parseRecognition, parseAIText, recognizeFood, checkAIKey } = await import('../src/lib/foodAI')
+const { parseRecognition, parseAIText, recognizeFood, checkAIKey, chooseOpenRouterModel, resetOpenRouterModel } = await import('../src/lib/foodAI')
 const { toFood, searchOff } = await import('../src/lib/openFoodFacts')
 const { appStorage, flushStorage } = await import('../src/lib/storage')
 await useApp.persist.rehydrate()
@@ -195,7 +195,12 @@ test('Ответ в JSON-блоке принимается, обрезанный
 test('Поиск OFF кэширует один запрос и ограничивает повторные обращения', async () => {
   const original = globalThis.fetch
   let count = 0
-  globalThis.fetch = async () => { count++; return new Response(JSON.stringify({ hits: [] }), { status: 200 }) }
+  globalThis.fetch = async (input) => {
+    count++
+    // Браузер ходит в OFF через свой сервер: напрямую запрос блокирует CORS.
+    assert.equal(String(input), '/api/off/search?q=test&page_size=25')
+    return new Response(JSON.stringify({ hits: [] }), { status: 200 })
+  }
   try {
     await searchOff('test')
     await searchOff('test')
@@ -351,4 +356,86 @@ test('Смена цели сбрасывает поправку; старые к
   assert.equal(parseAppData(initialData).profile.nutritionAdjustment, undefined)
   assert.throws(() => parseAppData({ ...initialData, profile: { ...initialData.profile, nutritionAdjustment: { kcalOffset: -9999 } } }))
   assert.throws(() => parseAppData({ ...initialData, profile: { ...initialData.profile, nutritionAdjustment: { kcalOffset: -100, kcalChange: -100, appliedAt: today, weeklyRate: 0, goal: 'lose' } } }))
+})
+
+const orCatalog = { data: [
+  { id: 'paid/vision-pro', architecture: { input_modalities: ['text', 'image'] }, pricing: { prompt: '0.000005', completion: '0.00001' } },
+  { id: 'free/text-only:free', architecture: { input_modalities: ['text'] }, pricing: { prompt: '0', completion: '0' } },
+  { id: 'zzz/unknown-vlm:free', architecture: { input_modalities: ['text', 'image'] }, pricing: { prompt: '0', completion: '0' } },
+  { id: 'qwen/qwen3-vl-30b:free', architecture: { input_modalities: ['text', 'image'] }, pricing: { prompt: '0', completion: '0' } },
+] }
+
+test('OpenRouter берёт бесплатную модель с поддержкой фото, платные и текстовые пропускает', () => {
+  assert.equal(chooseOpenRouterModel(orCatalog.data), 'qwen/qwen3-vl-30b:free')
+  // Без знакомого семейства годится любая бесплатная модель, читающая фото.
+  assert.equal(chooseOpenRouterModel(orCatalog.data.filter((m) => !m.id.startsWith('qwen'))), 'zzz/unknown-vlm:free')
+  assert.throws(() => chooseOpenRouterModel(orCatalog.data.filter((m) => m.pricing.prompt !== '0' || !m.architecture.input_modalities.includes('image'))), /нет бесплатной модели/)
+  assert.throws(() => chooseOpenRouterModel(undefined), /нет бесплатной модели/)
+})
+
+test('OpenRouter отправляет фото выбранной модели и читает JSON среди пояснений', async () => {
+  const original = globalThis.fetch
+  resetOpenRouterModel()
+  const urls: string[] = []
+  globalThis.fetch = async (input, init) => {
+    const url = String(input)
+    urls.push(url)
+    if (url.endsWith('/models')) return new Response(JSON.stringify(orCatalog), { status: 200 })
+    assert.equal(url, 'https://openrouter.ai/api/v1/chat/completions')
+    assert.ok(!url.includes('or-test'))
+    assert.equal((init!.headers as Record<string, string>).Authorization, 'Bearer or-test')
+    const body = JSON.parse(init!.body as string)
+    assert.equal(body.model, 'qwen/qwen3-vl-30b:free')
+    assert.equal(body.messages[0].content[1].image_url.url, 'data:image/jpeg;base64,image')
+    const json = JSON.stringify({ items: [{ ...food, grams: 200, confidence: 'medium' }], note: 'Оценка' })
+    return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: `Вот разбор фото:\n\`\`\`json\n${json}\n\`\`\`\nПроверь граммы.` } }] }), { status: 200 })
+  }
+  try {
+    const res = await recognizeFood({ apiKey: 'or-test', provider: 'openrouter', imageBase64: 'image' })
+    assert.equal(res.items[0].source, 'openrouter')
+    assert.equal(res.items[0].grams, 200)
+    assert.deepEqual(urls, ['https://openrouter.ai/api/v1/models', 'https://openrouter.ai/api/v1/chat/completions'])
+    // Каталог запрашивается один раз на ключ.
+    await recognizeFood({ apiKey: 'or-test', provider: 'openrouter', imageBase64: 'image' })
+    assert.equal(urls.filter((u) => u.endsWith('/models')).length, 1)
+  } finally { globalThis.fetch = original; resetOpenRouterModel() }
+})
+
+test('Лимит на минуту и исчерпанная дневная квота объясняются по-разному', async () => {
+  const original = globalThis.fetch
+  const answer = (body: string) => async (input: Request | string | URL) =>
+    String(input).endsWith('/models') ? new Response(JSON.stringify(orCatalog), { status: 200 }) : new Response(body, { status: 429 })
+  try {
+    resetOpenRouterModel()
+    globalThis.fetch = answer(JSON.stringify({ error: { message: 'Rate limit exceeded: free-models-per-day' } })) as typeof fetch
+    await assert.rejects(() => recognizeFood({ apiKey: 'or-test', provider: 'openrouter', imageBase64: 'image' }), /дневная бесплатная квота/)
+    globalThis.fetch = answer(JSON.stringify({ error: { message: 'Rate limit exceeded: 20 per minute' } })) as typeof fetch
+    await assert.rejects(() => recognizeFood({ apiKey: 'or-test', provider: 'openrouter', imageBase64: 'image' }), /Подожди минуту/)
+    globalThis.fetch = async () => new Response('{}', { status: 429 })
+    await assert.rejects(() => recognizeFood({ apiKey: 'test-key', provider: 'groq', imageBase64: 'image' }), /лимит запросов или бесплатной квоты/)
+  } finally { globalThis.fetch = original; resetOpenRouterModel() }
+})
+
+test('Проверка ключа OpenRouter показывает модель и дневной лимит, не отправляя фото', async () => {
+  const original = globalThis.fetch
+  resetOpenRouterModel()
+  globalThis.fetch = async (input, init) => {
+    assert.equal(init!.method, 'GET')
+    assert.equal(init!.body, undefined)
+    if (String(input).endsWith('/key')) return new Response(JSON.stringify({ data: { is_free_tier: true } }), { status: 200 })
+    return new Response(JSON.stringify(orCatalog), { status: 200 })
+  }
+  try {
+    const message = await checkAIKey({ apiKey: 'or-test', provider: 'openrouter' })
+    assert.match(message, /qwen\/qwen3-vl-30b:free/)
+    assert.match(message, /50 в день/)
+    globalThis.fetch = async () => new Response('{}', { status: 401 })
+    await assert.rejects(() => checkAIKey({ apiKey: 'wrong', provider: 'openrouter' }), /ключ не принят/)
+  } finally { globalThis.fetch = original; resetOpenRouterModel() }
+})
+
+test('Настройки принимают OpenRouter, неизвестный сервис отклоняется', () => {
+  assert.equal(parseAppData({ ...initialData, settings: { restSeconds: 90, aiProvider: 'openrouter' } }).settings.aiProvider, 'openrouter')
+  assert.throws(() => parseAppData({ ...initialData, settings: { restSeconds: 90, aiProvider: 'unknown-service' } }), /сервис распознавания/)
+  assert.equal(validateFood({ ...food, source: 'openrouter' }).source, 'openrouter')
 })

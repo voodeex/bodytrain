@@ -31,7 +31,7 @@ export interface Workout {
   restDuration?: number
 }
 
-export type FoodSource = 'local' | 'off' | 'vision' | 'groq' | 'cloudflare' | 'gemini' | 'claude' | 'manual'
+export type FoodSource = 'local' | 'off' | 'vision' | 'groq' | 'openrouter' | 'cloudflare' | 'gemini' | 'claude' | 'manual'
 
 /** Продукт с КБЖУ на 100 г. */
 export interface FoodItem {
@@ -98,7 +98,7 @@ export interface BodyWeightEntry {
   kg: number
 }
 
-export type AIProvider = 'groq' | 'cloudflare'
+export type AIProvider = 'groq' | 'openrouter' | 'cloudflare'
 
 export interface Settings {
   restSeconds: number

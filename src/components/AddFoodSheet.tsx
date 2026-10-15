@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Barcode, Camera, Clock, Image, PenLine, ScanLine, Search } from 'lucide-react'
 import { searchLocal } from '../data/foods'
 import { detectBarcode, scanBarcodeLive, scannerAvailable } from '../lib/bodyVision'
@@ -54,7 +55,7 @@ export function AddFoodSheet({
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`h-10 rounded-xl text-[13px] font-medium flex flex-col items-center justify-center leading-tight ${
+                className={`h-14 rounded-xl text-[13px] font-medium flex flex-col items-center justify-center leading-tight ${
                   tab === t.id ? 'bg-surface-2 text-text' : 'text-muted'
                 }`}
               >
@@ -91,10 +92,12 @@ export function AddFoodSheet({
         }}
       />
 
-      {toast && (
+      {toast && createPortal(
+        // Рядом с листом, который живёт в body: иначе уведомление осталось бы под ним.
         <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(var(--sab)+90px)] z-[60] bg-surface-2 border border-line rounded-full px-4 py-2.5 text-[14px] font-medium shadow-xl animate-fade max-w-[90%] truncate">
           {toast}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

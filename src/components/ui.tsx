@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { fmt, parseNum } from '../lib/utils'
 
@@ -94,7 +95,7 @@ export function IconButton({
     <button
       aria-label={label}
       onClick={onClick}
-      className={cx('pressable w-10 h-10 rounded-full bg-surface-2 inline-flex items-center justify-center text-text', className)}
+      className={cx('pressable w-11 h-11 rounded-full bg-surface-2 inline-flex items-center justify-center text-text', className)}
     >
       {children}
     </button>
@@ -197,7 +198,10 @@ export function Sheet({
     return () => { document.removeEventListener('keydown', onKey); if (previous?.isConnected) previous.focus({ preventScroll: true }) }
   }, [open])
   if (!open) return null
-  return (
+  // Лист — поверх всего приложения, поэтому он живёт в body, а не внутри экрана.
+  // Внутри <main> (прокрутка + анимация) образуется контекст наложения, и z-50 действовал
+  // бы только внутри него: панель вкладок с backdrop-фильтром перекрывала бы нижнюю кнопку.
+  return createPortal(
     <div className="app-layer fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/60 animate-fade" onClick={onClose} />
       <div
@@ -223,7 +227,8 @@ export function Sheet({
         {footer && <div className="px-5 pt-3 pb-[calc(var(--sab)+12px)] border-t border-line bg-bg">{footer}</div>}
         {!footer && <div className="h-[var(--sab)]" />}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -245,7 +250,7 @@ export function Segmented<T extends string>({
           key={o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            'flex-1 h-9 rounded-xl text-[14px] font-medium transition-colors inline-flex items-center justify-center gap-1.5',
+            'flex-1 h-11 rounded-xl text-[14px] font-medium transition-colors inline-flex items-center justify-center gap-1.5',
             value === o.value ? 'bg-surface-2 text-text' : 'text-muted',
           )}
         >

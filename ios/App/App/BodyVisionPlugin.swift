@@ -25,7 +25,7 @@ public class BodyVisionPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func keyQuery(_ call: CAPPluginCall) -> [String: Any]? {
         let name = call.getString("name") ?? "gemini_api_key"
-        guard ["gemini_api_key", "groq_api_key", "cloudflare_api_key", "cloudflare_account_id", "bodytrain_session"].contains(name) else {
+        guard ["gemini_api_key", "groq_api_key", "openrouter_api_key", "cloudflare_api_key", "cloudflare_account_id", "bodytrain_session"].contains(name) else {
             call.reject("Неизвестное имя ключа", "BAD_KEY")
             return nil
         }

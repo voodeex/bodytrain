@@ -1,14 +1,29 @@
 import type { FoodItem } from './types'
-import { HttpError, requestJson } from './http'
+import { HttpError, isNative, requestJson } from './http'
 import { validateFood } from './validation'
 
 /**
  * Open Food Facts — открытая база упакованных продуктов (в т.ч. российских).
  * Поиск: search-a-licious (search.openfoodfacts.org), по штрихкоду: API v2.
- * OFF просит указывать понятный User-Agent.
+ *
+ * Браузер не может обратиться к OFF напрямую: search.openfoodfacts.org не отдаёт
+ * Access-Control-Allow-Origin, и запрос из Mini App блокирует CORS. Поэтому веб-версия
+ * ходит через свой сервер (/api/off/*), который заодно ставит User-Agent — его просит OFF,
+ * а браузеру запрещено задавать этот заголовок. На iOS запрос идёт нативно, мимо сервера.
  */
 const UA = 'BodyTrain/0.1 (iOS; personal app)'
 const FIELDS = 'code,product_name,product_name_ru,brands,nutriments,serving_quantity'
+
+const searchUrl = (query: string, pageSize: number) => {
+  const q = encodeURIComponent(query)
+  return isNative
+    ? `https://search.openfoodfacts.org/search?q=${q}&page_size=${pageSize}&langs=ru,en&fields=${FIELDS}`
+    : `/api/off/search?q=${q}&page_size=${pageSize}`
+}
+
+const productUrl = (code: string) => isNative
+  ? `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS}`
+  : `/api/off/product/${encodeURIComponent(code)}`
 
 interface OffNutriments {
   'energy-kcal_100g'?: number
@@ -67,12 +82,16 @@ export async function searchOff(query: string, pageSize = 25): Promise<FoodItem[
   if (cached && cached.expires > Date.now()) return cached.items
   if (Date.now() - lastSearch < 6500) throw new Error('Подожди несколько секунд перед следующим поиском в открытой базе')
   lastSearch = Date.now()
-  const q = encodeURIComponent(query.trim())
-  const url = `https://search.openfoodfacts.org/search?q=${q}&page_size=${pageSize}&langs=ru,en&fields=${FIELDS}`
+  const url = searchUrl(query.trim(), pageSize)
   let res: { hits?: OffProduct[] }
   try { res = await requestJson(url, { headers: { 'User-Agent': UA } }) }
   catch (e) {
-    if (e instanceof HttpError && e.status === 429) throw new Error('Open Food Facts ограничил запросы. Подожди минуту.')
+    if (e instanceof HttpError) {
+      if (e.status === 429) throw new Error('Open Food Facts ограничил запросы. Подожди минуту.')
+      // Свой сервер объясняет причину точнее, чем «не ответил».
+      const message = (e.body as { error?: string } | null)?.error
+      if (typeof message === 'string' && message) throw new Error(message)
+    }
     throw new Error('Open Food Facts не ответил. Проверь интернет; локальная база доступна офлайн.')
   }
   if (!Array.isArray(res.hits)) throw new Error('Открытая база вернула неожиданный ответ. Попробуй штрихкод или ручной ввод.')
@@ -92,7 +111,7 @@ export async function searchOff(query: string, pageSize = 25): Promise<FoodItem[
 }
 
 export async function lookupBarcode(code: string): Promise<FoodItem | null> {
-  const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS}`
+  const url = productUrl(code)
   try {
     const res = await requestJson<{ status?: number; product?: OffProduct }>(url, { headers: { 'User-Agent': UA } })
     if (!res.product) return null

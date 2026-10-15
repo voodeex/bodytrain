@@ -195,7 +195,12 @@ test('Ответ в JSON-блоке принимается, обрезанный
 test('Поиск OFF кэширует один запрос и ограничивает повторные обращения', async () => {
   const original = globalThis.fetch
   let count = 0
-  globalThis.fetch = async () => { count++; return new Response(JSON.stringify({ hits: [] }), { status: 200 }) }
+  globalThis.fetch = async (input) => {
+    count++
+    // Браузер ходит в OFF через свой сервер: напрямую запрос блокирует CORS.
+    assert.equal(String(input), '/api/off/search?q=test&page_size=25')
+    return new Response(JSON.stringify({ hits: [] }), { status: 200 })
+  }
   try {
     await searchOff('test')
     await searchOff('test')

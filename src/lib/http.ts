@@ -7,8 +7,6 @@ export const isNative = Capacitor.isNativePlatform()
  * На iOS запросы идут через нативный CapacitorHttp, поэтому CORS не мешает.
  */
 const devProxy: [string, string][] = [
-  ['https://search.openfoodfacts.org', '/proxy/off-search'],
-  ['https://world.openfoodfacts.org', '/proxy/off'],
   ['https://api.groq.com', '/proxy/groq'],
   ['https://openrouter.ai', '/proxy/openrouter'],
   ['https://api.cloudflare.com', '/proxy/cloudflare'],

@@ -384,6 +384,50 @@ export function createApp({ db, config, fetchImpl = fetch }: { db: Db; config: C
     return c.json({ ok: true })
   })
 
+  // ── Open Food Facts ────────────────────────────────────────────────
+  // search.openfoodfacts.org не отдаёт Access-Control-Allow-Origin, поэтому из браузера
+  // (Mini App) открытая база недоступна напрямую. Проксируем сами: это не открытый прокси —
+  // адрес собирается здесь, наружу уходят только два GET-запроса к фиксированным хостам.
+  // На iOS запрос идёт нативно мимо сервера.
+
+  const offLimiter = new RateLimiter(30, 60 * 1000)
+  const OFF_UA = 'BodyTrain/0.3 (https://github.com/voodeex/bodytrain)'
+  const OFF_FIELDS = 'code,product_name,product_name_ru,brands,nutriments,serving_quantity'
+
+  const offRequest = async (c: Context, url: string) => {
+    limit(offLimiter, `ip:${clientIp(c)}`)
+    const upstream = await fetchImpl(url, {
+      headers: { Accept: 'application/json', 'User-Agent': OFF_UA },
+      signal: AbortSignal.timeout(15000),
+    }).catch(() => null)
+    if (!upstream) throw new ApiError(503, 'Открытая база не ответила. Попробуй позже.')
+    if (upstream.status === 404) throw new ApiError(404, 'Продукт не найден в открытой базе')
+    if (upstream.status === 429) throw new ApiError(429, 'Открытая база ограничила запросы. Подожди минуту.')
+    if (!upstream.ok) throw new ApiError(503, 'Открытая база временно недоступна')
+    const text = await upstream.text()
+    if (text.length > 2 * 1024 * 1024) throw new ApiError(503, 'Открытая база вернула слишком большой ответ')
+    try {
+      return c.json(JSON.parse(text))
+    } catch {
+      throw new ApiError(503, 'Открытая база вернула неожиданный ответ')
+    }
+  }
+
+  app.get('/api/off/search', async (c) => {
+    const q = (c.req.query('q') ?? '').trim()
+    if (q.length < 2 || q.length > 100) throw new ApiError(422, 'Запрос — от 2 до 100 символов')
+    const size = Number(c.req.query('page_size') ?? 25)
+    if (!Number.isInteger(size) || size < 1 || size > 50) throw new ApiError(422, 'Некорректный размер страницы')
+    const url = `https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&page_size=${size}&langs=ru,en&fields=${OFF_FIELDS}`
+    return offRequest(c, url)
+  })
+
+  app.get('/api/off/product/:code', async (c) => {
+    const code = c.req.param('code')
+    if (!/^\d{8,14}$/.test(code)) throw new ApiError(422, 'Штрихкод — от 8 до 14 цифр')
+    return offRequest(c, `https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${OFF_FIELDS}`)
+  })
+
   app.all('/api/*', () => {
     throw new ApiError(404, 'Не найдено')
   })

@@ -150,7 +150,7 @@ function AiSettings() {
     <>
       <SectionTitle>Распознавание еды</SectionTitle>
       <Card className="mx-5 p-4 space-y-4">
-        <p className="text-[14px] text-muted leading-relaxed">На iPhone Apple Vision работает без ключа и интернета. Для оценки состава и порций по фото выбери облачный сервис с бесплатным тарифом.</p>
+        <p className="text-[14px] text-muted leading-relaxed">На iPhone Apple Vision работает без ключа и интернета. Для оценки состава и порций по фото выбери облачный сервис с бесплатным тарифом — дневные лимиты у них разные и указаны под выбором.</p>
         <Segmented value={provider} onChange={(aiProvider: AIProvider) => setSettings({ aiProvider })} options={aiProviders.map((p) => ({ value: p.id, label: p.label }))} />
         <ProviderSettings key={provider} provider={provider} />
         <p className="text-[12px] text-muted">Ключи хранятся в Keychain на iPhone и не входят в резервную копию. Фото и уточнение отправляются только по кнопке анализа; профиль и дневник остаются на устройстве. Используй Free план. Доступ зависит от сервиса и аккаунта.</p>
@@ -158,6 +158,13 @@ function AiSettings() {
     </>
   )
 }
+
+const providerNotes: Record<AIProvider, string> = {
+  groq: 'Free план: до 1000 запросов в день, также действуют лимиты токенов и частоты. Точные лимиты — в консоли Groq.',
+  openrouter: 'Бесплатные модели: 20 запросов в минуту и 50 в день, после пополнения счёта от $10 — 1000 в день. Модель для фото подбирается из каталога бесплатных автоматически.',
+  cloudflare: 'Workers Free: 10 000 нейронов в день. В Workers AI нажми Use REST API → Create a Workers AI API Token; скопируй токен и Account ID.',
+}
+const keyPlaceholders: Record<AIProvider, string> = { groq: 'gsk_…', openrouter: 'sk-or-v1-…', cloudflare: 'Workers AI API Token' }
 
 function ProviderSettings({ provider }: { provider: AIProvider }) {
   const service = aiProviders.find((p) => p.id === provider)!
@@ -181,12 +188,12 @@ function ProviderSettings({ provider }: { provider: AIProvider }) {
       <div className="rounded-2xl bg-surface-2 p-3.5">
         <div className="font-semibold">{service.model}</div>
         <p className="text-[13px] text-muted mt-1">{service.hint}</p>
-        <p className="text-[12px] text-muted mt-2">{provider === 'groq' ? 'Free план: до 1000 запросов в день, также действуют лимиты токенов и частоты. Точные лимиты — в консоли Groq.' : 'Workers Free: 10 000 нейронов в день. В Workers AI нажми Use REST API → Create a Workers AI API Token; скопируй токен и Account ID.'}</p>
+        <p className="text-[12px] text-muted mt-2">{providerNotes[provider]}</p>
       </div>
       <Field label={`API-ключ ${service.label}`} hint={<a href={service.keyUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent">Получить свой ключ <ExternalLink size={12} /></a>}>
         <div className="relative">
           <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
-          <TextInput aria-label={`API-ключ ${service.label}`} type="password" autoComplete="off" autoCapitalize="off" spellCheck={false} disabled={!loaded || busy} value={key} onChange={(e) => setKey(e.target.value)} placeholder={provider === 'groq' ? 'gsk_…' : 'Workers AI API Token'} className="pl-10 bg-surface-2" />
+          <TextInput aria-label={`API-ключ ${service.label}`} type="password" autoComplete="off" autoCapitalize="off" spellCheck={false} disabled={!loaded || busy} value={key} onChange={(e) => setKey(e.target.value)} placeholder={keyPlaceholders[provider]} className="pl-10 bg-surface-2" />
         </div>
       </Field>
       {provider === 'cloudflare' && <Field label="Account ID"><TextInput aria-label="Account ID" autoComplete="off" autoCapitalize="off" spellCheck={false} maxLength={32} disabled={!loaded || busy} value={account} onChange={(e) => setAccount(e.target.value.trim())} placeholder="32 символа из панели Cloudflare" className="bg-surface-2" /></Field>}

@@ -27,6 +27,7 @@ const sourceLabel: Record<FoodItem['source'], string> = {
   claude: 'Оценка Claude',
   gemini: 'Оценка Gemini',
   groq: 'Оценка Qwen · Groq',
+  openrouter: 'Оценка модели · OpenRouter',
   cloudflare: 'Оценка Moondream · Cloudflare',
   manual: 'Добавлено вручную',
 }
@@ -70,11 +71,11 @@ export function AmountSheet({
       footer={
         <div className="flex gap-2">
           {onDelete && (
-            <Button variant="danger" className="w-14 px-0" onClick={onDelete}>
+            <Button variant="danger" className="w-14 h-14 px-0 shrink-0" onClick={onDelete}>
               <Trash2 size={20} />
             </Button>
           )}
-          <Button className="flex-1" disabled={grams <= 0} onClick={() => onSubmit(grams, meal)}>
+          <Button className="flex-1 h-14" disabled={grams <= 0} onClick={() => onSubmit(grams, meal)}>
             {submitLabel} · {fmt(m.kcal)} ккал
           </Button>
         </div>
@@ -96,7 +97,7 @@ export function AmountSheet({
               key={c}
               onClick={() => setGrams(c)}
               className={cx(
-                'tnum shrink-0 h-9 px-3.5 rounded-full text-[14px] font-medium',
+                'tnum shrink-0 h-11 px-4 rounded-full text-[15px] font-medium',
                 grams === c ? 'bg-accent text-accent-ink' : 'bg-surface text-muted',
               )}
             >

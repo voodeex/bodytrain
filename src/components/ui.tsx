@@ -94,7 +94,7 @@ export function IconButton({
     <button
       aria-label={label}
       onClick={onClick}
-      className={cx('pressable w-10 h-10 rounded-full bg-surface-2 inline-flex items-center justify-center text-text', className)}
+      className={cx('pressable w-11 h-11 rounded-full bg-surface-2 inline-flex items-center justify-center text-text', className)}
     >
       {children}
     </button>
@@ -245,7 +245,7 @@ export function Segmented<T extends string>({
           key={o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            'flex-1 h-9 rounded-xl text-[14px] font-medium transition-colors inline-flex items-center justify-center gap-1.5',
+            'flex-1 h-11 rounded-xl text-[14px] font-medium transition-colors inline-flex items-center justify-center gap-1.5',
             value === o.value ? 'bg-surface-2 text-text' : 'text-muted',
           )}
         >

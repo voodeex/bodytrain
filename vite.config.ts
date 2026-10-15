@@ -26,6 +26,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/proxy\/groq/, ''),
       },
+      '/proxy/openrouter': {
+        target: 'https://openrouter.ai',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/proxy\/openrouter/, ''),
+      },
       '/proxy/cloudflare': {
         target: 'https://api.cloudflare.com',
         changeOrigin: true,

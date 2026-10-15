@@ -54,7 +54,7 @@ export function AddFoodSheet({
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`h-10 rounded-xl text-[13px] font-medium flex flex-col items-center justify-center leading-tight ${
+                className={`h-14 rounded-xl text-[13px] font-medium flex flex-col items-center justify-center leading-tight ${
                   tab === t.id ? 'bg-surface-2 text-text' : 'text-muted'
                 }`}
               >

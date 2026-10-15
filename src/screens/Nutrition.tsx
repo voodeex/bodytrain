@@ -70,30 +70,34 @@ export function NutritionScreen({ goToProfile }: { goToProfile: () => void }) {
           const sum = sumMacros(list.map((e) => macrosFor(e.food, e.grams)))
           return (
             <Card key={meal} className="overflow-hidden">
-              <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-                <div>
+              {/* Нажимается вся строка приёма пищи, а не только кружок с плюсом. */}
+              <button
+                onClick={() => setAddMeal(meal)}
+                className="pressable w-full text-left flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0">
                   <div className="text-[17px] font-semibold">{mealLabels[meal]}</div>
-                  {list.length > 0 && (
+                  {list.length > 0 ? (
                     <div className="tnum text-[13px] text-muted">
                       {fmt(sum.kcal)} ккал · Б {fmt(sum.protein)} · Ж {fmt(sum.fat)} · У {fmt(sum.carbs)}
+                      {/* Сводку VoiceOver читает с экрана, а назначение кнопки — отдельной подписью. */}
+                      <span className="sr-only">. Записать приём пищи</span>
                     </div>
+                  ) : (
+                    <div className="text-[13px] text-muted">Записать приём пищи</div>
                   )}
                 </div>
-                <button
-                  aria-label={`Добавить: ${mealLabels[meal]}`}
-                  onClick={() => setAddMeal(meal)}
-                  className="pressable w-9 h-9 rounded-full bg-accent text-accent-ink flex items-center justify-center"
-                >
-                  <Plus size={20} strokeWidth={2.5} />
-                </button>
-              </div>
+                <span aria-hidden className="w-11 h-11 shrink-0 rounded-full bg-accent text-accent-ink flex items-center justify-center">
+                  <Plus size={22} strokeWidth={2.5} />
+                </span>
+              </button>
               {list.map((e) => {
                 const m = macrosFor(e.food, e.grams)
                 return (
                   <button
                     key={e.id}
                     onClick={() => setEditing(e)}
-                    className="pressable w-full text-left px-4 py-2.5 border-t border-line/60 flex items-center gap-3"
+                    className="pressable w-full text-left px-4 py-3 border-t border-line/60 flex items-center gap-3"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="text-[15px] truncate">{e.food.name}</div>
@@ -105,7 +109,6 @@ export function NutritionScreen({ goToProfile }: { goToProfile: () => void }) {
                   </button>
                 )
               })}
-              {list.length === 0 && <div className="h-2" />}
             </Card>
           )
         })}

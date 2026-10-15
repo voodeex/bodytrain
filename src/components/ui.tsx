@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { fmt, parseNum } from '../lib/utils'
 
@@ -197,7 +198,10 @@ export function Sheet({
     return () => { document.removeEventListener('keydown', onKey); if (previous?.isConnected) previous.focus({ preventScroll: true }) }
   }, [open])
   if (!open) return null
-  return (
+  // Лист — поверх всего приложения, поэтому он живёт в body, а не внутри экрана.
+  // Внутри <main> (прокрутка + анимация) образуется контекст наложения, и z-50 действовал
+  // бы только внутри него: панель вкладок с backdrop-фильтром перекрывала бы нижнюю кнопку.
+  return createPortal(
     <div className="app-layer fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/60 animate-fade" onClick={onClose} />
       <div
@@ -223,7 +227,8 @@ export function Sheet({
         {footer && <div className="px-5 pt-3 pb-[calc(var(--sab)+12px)] border-t border-line bg-bg">{footer}</div>}
         {!footer && <div className="h-[var(--sab)]" />}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
